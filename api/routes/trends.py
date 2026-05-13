@@ -8,6 +8,7 @@ from pydantic import BaseModel
 
 from agents.trend_analyzer import TrendAnalyzerAgent, TrendReport
 from db import queries
+from db.connection import get_pool
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/trends", tags=["trends"])
@@ -20,6 +21,16 @@ class TrendResponse(BaseModel):
     platform: str
     period: str
     report: dict
+
+
+class TopicEntry(BaseModel):
+    topic: str
+    mention_count: int
+
+
+class TopTopicsResponse(BaseModel):
+    brand: str
+    topics: list[TopicEntry]
 
 
 @router.get("/{brand}", response_model=TrendResponse)
@@ -68,3 +79,32 @@ async def get_brand_trends(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(exc),
         ) from exc
+
+
+@router.get("/{brand}/topics", response_model=TopTopicsResponse)
+async def get_top_topics(
+    brand: str,
+    limit: int = Query(default=10, ge=1, le=50),
+) -> TopTopicsResponse:
+    """Return top topics for a brand from the materialized view (last 30 days)."""
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT topic, mention_count
+            FROM mv_top_topics
+            WHERE brand = $1
+            ORDER BY mention_count DESC
+            LIMIT $2
+            """,
+            brand, limit,
+        )
+    if not rows:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No topic data found for brand '{brand}'. Run the pipeline first.",
+        )
+    return TopTopicsResponse(
+        brand=brand,
+        topics=[TopicEntry(topic=r["topic"], mention_count=r["mention_count"]) for r in rows],
+    )
