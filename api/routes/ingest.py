@@ -13,6 +13,7 @@ from api.models import (
     SignalIngestResponse,
 )
 from db import queries
+from db.utils import normalize_signal_strength
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/ingest", tags=["ingest"])
@@ -26,6 +27,7 @@ router = APIRouter(prefix="/ingest", tags=["ingest"])
 async def ingest_signal(body: SignalIngestRequest) -> SignalIngestResponse:
     """Ingest a single social media signal."""
     try:
+        strength = body.signal_strength or normalize_signal_strength(body.engagements)
         signal_id = await queries.insert_signal(
             platform=body.platform,
             brand=body.brand,
@@ -33,7 +35,7 @@ async def ingest_signal(body: SignalIngestRequest) -> SignalIngestResponse:
             post_text=body.post_text,
             campaign_type=body.campaign_type,
             engagements=body.engagements,
-            signal_strength=body.signal_strength,
+            signal_strength=strength,
         )
         return SignalIngestResponse(
             signal_id=signal_id,
