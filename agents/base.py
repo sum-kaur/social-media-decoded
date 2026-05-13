@@ -39,7 +39,8 @@ class BaseAgent:
     @with_exponential_backoff(
         max_retries=int(os.environ.get("LLM_MAX_RETRIES", "3")),
         base_delay=float(os.environ.get("LLM_RETRY_BASE_DELAY", "1.0")),
-        retryable_exceptions=(anthropic.RateLimitError, anthropic.APIStatusError),
+        # Retry on rate limits and transient 5xx errors; propagate 4xx immediately
+        retryable_exceptions=(anthropic.RateLimitError, anthropic.InternalServerError),
     )
     async def _call_llm(
         self,
