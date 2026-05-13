@@ -46,6 +46,9 @@ def with_exponential_backoff(
                         type(exc).__name__, exc,
                     )
                     await asyncio.sleep(sleep_for)
+                except Exception as exc:
+                    # Non-retryable exceptions propagate immediately
+                    raise
             raise last_exc  # type: ignore[misc]
 
         return wrapper  # type: ignore[return-value]
