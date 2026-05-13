@@ -54,6 +54,14 @@ app.include_router(runs.router)
 app.include_router(trends.router)
 
 
+@app.get("/metrics", tags=["system"], response_class=None)
+async def metrics_endpoint():
+    """Prometheus-compatible metrics endpoint."""
+    from fastapi.responses import PlainTextResponse
+    from pipeline.metrics import get_registry
+    return PlainTextResponse(get_registry().to_prometheus(), media_type="text/plain")
+
+
 @app.get("/health", response_model=HealthResponse, tags=["system"])
 async def health_check() -> HealthResponse:
     """Liveness + readiness probe."""
