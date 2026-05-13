@@ -115,8 +115,19 @@ async def run_pipeline(
     signal_ids: list[str],
     raw_signals: list[dict],
 ) -> PipelineState:
+    import time
     graph = get_graph()
-    run_id = set_run_id()  # bind to context for log correlation
+    run_id = set_run_id()
+    start = time.monotonic()
+
+    # Record run start in audit table (best-effort — don't fail pipeline on DB error)
+    try:
+        await queries.insert_pipeline_run(
+            run_id=run_id, brand=brand, platform=platform,
+            signal_count=len(raw_signals),
+        )
+    except Exception:
+        pass
 
     initial_state: PipelineState = {
         "run_id": run_id,
@@ -138,4 +149,19 @@ async def run_pipeline(
     }
 
     final_state = await graph.ainvoke(initial_state)
+
+    # Record completion
+    try:
+        insight_id_str = final_state.get("insight_id")
+        await queries.complete_pipeline_run(
+            run_id=run_id,
+            agents_completed=final_state.get("completed_agents", []),
+            agents_failed=final_state.get("failed_agents", []),
+            insight_id=uuid.UUID(insight_id_str) if insight_id_str else None,
+            duration_ms=(time.monotonic() - start) * 1000,
+            error=final_state.get("error"),
+        )
+    except Exception:
+        pass
+
     return final_state
