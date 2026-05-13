@@ -1,9 +1,12 @@
 """Agent 3 — Insight Generator: translates clusters into marketing insights."""
 from __future__ import annotations
 
+import logging
 import time
 
 from pydantic import BaseModel, Field
+
+logger = logging.getLogger(__name__)
 
 from agents.base import BaseAgent
 from pipeline.state import PipelineState
@@ -47,6 +50,7 @@ class InsightGeneratorAgent(BaseAgent):
 
         cached = self._get_cached(f"insights:{input_hash}")
         if cached:
+            logger.debug("Cache hit for insight_generator input_hash=%s", input_hash)
             latency = (time.monotonic() - start) * 1000
             trace = self._build_trace_entry(input_hash, cached, latency, 0)
             return {
