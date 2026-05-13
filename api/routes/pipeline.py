@@ -40,11 +40,14 @@ async def run_pipeline_endpoint(body: PipelineRunRequest) -> PipelineRunResponse
                 detail=f"No signals found for brand '{body.brand}'",
             )
 
-        # Convert asyncpg Records to plain dicts and stringify UUIDs
+        # Convert asyncpg Records to JSON-serialisable plain dicts
+        # asyncpg returns UUID and datetime objects that need explicit casting
         signals_dicts = []
         for s in raw_signals:
             d = dict(s)
             d["id"] = str(d["id"])
+            if d.get("ingested_at"):
+                d["ingested_at"] = d["ingested_at"].isoformat()
             signals_dicts.append(d)
 
         final_state = await run_pipeline(
