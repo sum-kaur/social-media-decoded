@@ -20,6 +20,10 @@ class SignalIngestRequest(BaseModel):
     campaign_type: str | None = Field(default=None, examples=["product_launch"])
     engagements: int | None = Field(default=None, ge=0)
     signal_strength: float | None = Field(default=None, ge=0, le=1)
+    source_url: str | None = Field(default=None)
+    author_handle: str | None = Field(default=None)
+    language: str = Field(default="en", max_length=10)
+    is_verified_author: bool = Field(default=False)
 
 
 class SignalIngestResponse(BaseModel):
