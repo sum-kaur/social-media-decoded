@@ -60,6 +60,22 @@ async def get_signals_by_ids(signal_ids: list[uuid.UUID]) -> list[dict]:
         return [dict(r) for r in rows]
 
 
+async def get_signal_count_by_brand(brand: str) -> int:
+    async with acquire() as conn:
+        return await conn.fetchval(
+            "SELECT COUNT(*) FROM signals WHERE brand = $1", brand
+        )
+
+
+async def delete_signals_by_brand(brand: str) -> int:
+    """Delete all signals for a brand. Returns count of deleted rows."""
+    async with acquire() as conn:
+        result = await conn.execute(
+            "DELETE FROM signals WHERE brand = $1", brand
+        )
+        return int(result.split()[-1])
+
+
 # ---------------------------------------------------------------------------
 # Embeddings
 # ---------------------------------------------------------------------------
@@ -160,3 +176,65 @@ async def get_insight_by_id(insight_id: uuid.UUID) -> dict | None:
             insight_id,
         )
         return dict(row) if row else None
+
+
+# ---------------------------------------------------------------------------
+# Pipeline runs
+# ---------------------------------------------------------------------------
+
+async def insert_pipeline_run(
+    run_id: str,
+    brand: str,
+    platform: str,
+    signal_count: int,
+) -> None:
+    async with acquire() as conn:
+        await conn.execute(
+            """
+            INSERT INTO pipeline_runs (run_id, brand, platform, signal_count, status)
+            VALUES ($1, $2, $3, $4, 'running')
+            ON CONFLICT (run_id) DO NOTHING
+            """,
+            run_id, brand, platform, signal_count,
+        )
+
+
+async def complete_pipeline_run(
+    run_id: str,
+    agents_completed: list[str],
+    agents_failed: list[str],
+    insight_id: uuid.UUID | None,
+    duration_ms: float,
+    error: str | None = None,
+) -> None:
+    status = "failed" if error else "completed"
+    async with acquire() as conn:
+        await conn.execute(
+            """
+            UPDATE pipeline_runs
+            SET status = $1,
+                agents_completed = $2,
+                agents_failed = $3,
+                insight_id = $4,
+                completed_at = NOW(),
+                duration_ms = $5,
+                error = $6
+            WHERE run_id = $7
+            """,
+            status, agents_completed, agents_failed,
+            insight_id, duration_ms, error, run_id,
+        )
+
+
+async def get_pipeline_runs(brand: str | None = None, limit: int = 20) -> list[dict]:
+    async with acquire() as conn:
+        if brand:
+            rows = await conn.fetch(
+                "SELECT * FROM pipeline_runs WHERE brand = $1 ORDER BY started_at DESC LIMIT $2",
+                brand, limit,
+            )
+        else:
+            rows = await conn.fetch(
+                "SELECT * FROM pipeline_runs ORDER BY started_at DESC LIMIT $1", limit
+            )
+        return [dict(r) for r in rows]
