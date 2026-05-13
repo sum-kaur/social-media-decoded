@@ -12,6 +12,7 @@ from api.middleware import RequestLoggingMiddleware
 from api.models import HealthResponse
 from api.routes import analytics, brands, compare, ingest, insights, pipeline, runs, signals, trends
 from db.connection import close_pool, create_pool, get_pool
+from pipeline.config_validator import validate_config
 from pipeline.logging_config import configure_logging
 
 configure_logging()
@@ -20,6 +21,9 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    warnings = validate_config(strict=False)
+    for w in warnings:
+        logger.warning("Config warning: %s", w)
     logger.info("Starting up — connecting to database...")
     await create_pool()
     logger.info("Database pool ready")
