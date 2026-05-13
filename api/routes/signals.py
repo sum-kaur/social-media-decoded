@@ -78,6 +78,40 @@ async def list_signals(
     )
 
 
+class SearchResult(BaseModel):
+    id: uuid.UUID
+    brand: str
+    platform: str
+    post_text: str
+    sentiment: str | None
+    signal_strength: float | None
+    rank: float
+
+
+class SearchResponse(BaseModel):
+    query: str
+    results: list[SearchResult]
+
+
+@router.get("/search", response_model=SearchResponse)
+async def search_signals(
+    q: str = Query(description="Full-text search query (PostgreSQL tsquery syntax)"),
+    brand: str | None = Query(default=None),
+    limit: int = Query(default=20, ge=1, le=100),
+) -> SearchResponse:
+    """Full-text search across signal post_text using PostgreSQL tsvector."""
+    async with acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT id, brand, platform, post_text, sentiment, signal_strength, rank "
+            "FROM search_signals($1, $2, $3)",
+            q, brand, limit,
+        )
+    return SearchResponse(
+        query=q,
+        results=[SearchResult(**dict(r)) for r in rows],
+    )
+
+
 @router.get("/{signal_id}", response_model=SignalRecord)
 async def get_signal(signal_id: uuid.UUID) -> SignalRecord:
     """Fetch a single signal by ID."""
