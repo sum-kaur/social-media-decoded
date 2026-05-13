@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api.middleware import RequestLoggingMiddleware
 from api.models import HealthResponse
-from api.routes import ingest, insights, pipeline
+from api.routes import brands, ingest, insights, pipeline
 from db.connection import close_pool, create_pool, get_pool
 from pipeline.logging_config import configure_logging
 
@@ -49,6 +49,7 @@ app.add_middleware(
 app.include_router(ingest.router)
 app.include_router(pipeline.router)
 app.include_router(insights.router)
+app.include_router(brands.router)
 
 
 @app.get("/health", response_model=HealthResponse, tags=["system"])
