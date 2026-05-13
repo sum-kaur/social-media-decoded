@@ -31,9 +31,17 @@ jobs:
       - name: Lint with ruff
         run: ruff check . --select E,F,W --ignore E501
 
+      - name: Type check with mypy
+        run: mypy . --ignore-missing-imports --exclude tests/ --exclude scripts/ || true
+
       - name: Run tests
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
           ANTHROPIC_API_KEY: sk-ant-test-key
           APP_ENV: test
+          LOG_LEVEL: WARNING
         run: pytest --tb=short -q
+
+      - name: Upload coverage report
+        if: always()
+        run: pytest --cov=. --cov-report=term-missing --cov-omit="tests/*,scripts/*" -q || true
