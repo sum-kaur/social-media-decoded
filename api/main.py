@@ -11,11 +11,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from api.models import HealthResponse
 from api.routes import ingest, insights, pipeline
 from db.connection import close_pool, create_pool, get_pool
+from pipeline.logging_config import configure_logging
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)-8s %(name)s — %(message)s",
-)
+configure_logging()
 logger = logging.getLogger(__name__)
 
 
