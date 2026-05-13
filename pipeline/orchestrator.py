@@ -13,6 +13,7 @@ from agents.signal_extractor import SignalExtractorAgent
 from agents.supervisor import route_next, supervisor_node
 from agents.topic_clusterer import TopicClustererAgent
 from db import queries
+from pipeline.event_bus import get_bus
 from pipeline.middleware import set_run_id
 from pipeline.state import PipelineState
 
@@ -137,6 +138,7 @@ async def run_pipeline(
 
     final_state = await graph.ainvoke(initial_state)
 
+    duration_ms = (time.monotonic() - start) * 1000
     # Record completion
     try:
         insight_id_str = final_state.get("insight_id")
@@ -145,10 +147,25 @@ async def run_pipeline(
             agents_completed=final_state.get("completed_agents", []),
             agents_failed=final_state.get("failed_agents", []),
             insight_id=uuid.UUID(insight_id_str) if insight_id_str else None,
-            duration_ms=(time.monotonic() - start) * 1000,
+            duration_ms=duration_ms,
             error=final_state.get("error"),
         )
     except Exception:
         pass
+
+    # Emit lifecycle events for downstream hooks
+    bus = get_bus()
+    event_payload = {
+        "run_id": run_id,
+        "brand": brand,
+        "platform": platform,
+        "duration_ms": duration_ms,
+        "insight_id": final_state.get("insight_id"),
+    }
+    if final_state.get("error"):
+        event_payload["error"] = final_state["error"]
+        await bus.emit("pipeline.failed", event_payload)
+    else:
+        await bus.emit("pipeline.completed", event_payload)
 
     return final_state
