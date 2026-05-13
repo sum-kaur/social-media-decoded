@@ -70,7 +70,6 @@ def eval_topic_coverage(
 
     for fixture in fixtures:
         expected_topics = set(fixture.get("expected_topics", []))
-        # Find matching extracted signal
         for signal in extracted:
             if signal.get("platform") == fixture.get("platform") and \
                signal.get("brand") == fixture.get("brand"):
@@ -128,6 +127,21 @@ def eval_action_priority_distribution(
     }
 
 
+def eval_trend_score_distribution(extracted: list[dict]) -> dict:
+    """Check that trend scores are spread across the [0,1] range (not all 0 or all 1)."""
+    scores = [s.get("trend_score", 0) for s in extracted]
+    if not scores:
+        return {"metric": "trend_score_distribution", "pass": False, "reason": "no signals"}
+    avg = sum(scores) / len(scores)
+    variance = sum((s - avg) ** 2 for s in scores) / len(scores)
+    return {
+        "metric": "trend_score_distribution",
+        "avg": round(avg, 3),
+        "variance": round(variance, 4),
+        "has_variance": variance > 0.01,
+    }
+
+
 async def run_eval(pipeline_output: dict) -> dict:
     """Run all evaluation checks on a completed pipeline output."""
     fixtures = _load_json("sample_signals.json")
@@ -137,18 +151,18 @@ async def run_eval(pipeline_output: dict) -> dict:
 
     if pipeline_output.get("extracted_signals"):
         results.append(eval_sentiment_accuracy(
-            pipeline_output["extracted_signals"],
-            fixtures,
+            pipeline_output["extracted_signals"], fixtures,
         ))
         results.append(eval_topic_coverage(
+            pipeline_output["extracted_signals"], fixtures,
+        ))
+        results.append(eval_trend_score_distribution(
             pipeline_output["extracted_signals"],
-            fixtures,
         ))
 
     if pipeline_output.get("topic_clusters"):
         results.append(eval_cluster_quality(
-            pipeline_output["topic_clusters"],
-            expected_clusters,
+            pipeline_output["topic_clusters"], expected_clusters,
         ))
 
     if pipeline_output.get("recommended_actions"):
@@ -177,10 +191,11 @@ def _result_passes(result: dict) -> bool:
         return result.get("meets_minimum", False)
     if metric == "action_priority_distribution":
         return result.get("has_high_priority", False)
+    if metric == "trend_score_distribution":
+        return result.get("has_variance", False)
     return True
 
 
 if __name__ == "__main__":
-    import sys
     print("Evaluation module ready. Invoke via run_eval(pipeline_output) after running the pipeline.")
     print(f"Fixtures at: {FIXTURES_DIR}")
