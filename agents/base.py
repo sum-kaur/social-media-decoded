@@ -14,8 +14,11 @@ from pipeline.retry import CircuitBreaker, with_exponential_backoff
 
 logger = logging.getLogger(__name__)
 
-# In-memory response cache — swap for Redis in production
+# In-memory LRU cache — swap for Redis in production
+# Key: "{agent_name}:{input_hash}", Value: serialized agent output
 _response_cache: dict[str, Any] = {}
+_cache_access_order: list[str] = []  # tracks LRU order
+_CACHE_MAX_SIZE = 512
 
 _anthropic_circuit_breaker = CircuitBreaker(failure_threshold=5, recovery_timeout=60.0)
 
@@ -60,14 +63,22 @@ class BaseAgent:
         raise NotImplementedError
 
     def _get_cached(self, input_hash: str) -> Any | None:
-        return _response_cache.get(input_hash)
+        value = _response_cache.get(input_hash)
+        if value is not None and input_hash in _cache_access_order:
+            # Promote to most-recently-used
+            _cache_access_order.remove(input_hash)
+            _cache_access_order.append(input_hash)
+        return value
 
     def _set_cached(self, input_hash: str, value: Any) -> None:
-        # LRU eviction: drop oldest entry when cache exceeds 512 items
-        if len(_response_cache) >= 512:
-            oldest = next(iter(_response_cache))
-            del _response_cache[oldest]
+        if input_hash in _response_cache:
+            _cache_access_order.remove(input_hash)
+        elif len(_response_cache) >= _CACHE_MAX_SIZE:
+            # Evict least-recently-used entry
+            lru_key = _cache_access_order.pop(0)
+            del _response_cache[lru_key]
         _response_cache[input_hash] = value
+        _cache_access_order.append(input_hash)
 
     def _build_trace_entry(
         self,
