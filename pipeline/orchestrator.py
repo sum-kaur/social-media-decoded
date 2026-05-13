@@ -129,24 +129,11 @@ async def run_pipeline(
     except Exception:
         pass
 
-    initial_state: PipelineState = {
-        "run_id": run_id,
-        "brand": brand,
-        "platform": platform,
-        "signal_ids": signal_ids,
-        "raw_signals": raw_signals,
-        "extracted_signals": [],
-        "topic_clusters": [],
-        "marketing_insights": [],
-        "recommended_actions": [],
-        "current_agent": "",
-        "completed_agents": [],
-        "failed_agents": [],
-        "retry_counts": {},
-        "pipeline_trace": [],
-        "insight_id": None,
-        "error": None,
-    }
+    from pipeline.state import empty_state
+    initial_state = empty_state(brand=brand, platform=platform)
+    initial_state["run_id"] = run_id
+    initial_state["signal_ids"] = signal_ids
+    initial_state["raw_signals"] = raw_signals
 
     final_state = await graph.ainvoke(initial_state)
 
