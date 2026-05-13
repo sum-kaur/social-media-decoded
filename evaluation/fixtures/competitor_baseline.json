@@ -1,0 +1,22 @@
+{
+  "comparison": "Nike vs Adidas",
+  "platform": "twitter",
+  "expected_dimensions": [
+    "engagement_rate",
+    "sentiment",
+    "topic_diversity",
+    "virality",
+    "campaign_effectiveness"
+  ],
+  "nike_baseline": {
+    "avg_engagements": 221806,
+    "positive_signal_ratio": 0.75,
+    "top_campaign_types": ["product_launch", "ugc", "sponsorship"]
+  },
+  "adidas_baseline": {
+    "avg_engagements": 477500,
+    "positive_signal_ratio": 0.625,
+    "top_campaign_types": ["ugc", "collaboration", "product_launch"]
+  },
+  "expected_overall_winner": "adidas"
+}
