@@ -59,6 +59,9 @@ htmlcov/
 .env.production
 secrets.json
 
+# Claude Code context file
+CLAUDE.md
+
 # Logs
 *.log
 logs/
