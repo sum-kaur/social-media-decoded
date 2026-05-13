@@ -1,0 +1,14 @@
+{
+  "minimum_clusters": 2,
+  "expected_themes": [
+    "product_launch_hype",
+    "brand_sustainability",
+    "ugc_virality",
+    "athlete_performance"
+  ],
+  "sentiment_distribution": {
+    "positive": 0.6,
+    "negative": 0.2,
+    "neutral": 0.2
+  }
+}
