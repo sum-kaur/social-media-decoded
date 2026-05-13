@@ -14,6 +14,7 @@ from api.models import (
 )
 from db import queries
 from db.utils import normalize_signal_strength
+from pipeline.deduplicator import deduplicate_batch
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/ingest", tags=["ingest"])
@@ -55,10 +56,22 @@ async def ingest_signal(body: SignalIngestRequest) -> SignalIngestResponse:
     status_code=status.HTTP_201_CREATED,
 )
 async def bulk_ingest_signals(body: BulkIngestRequest) -> BulkIngestResponse:
-    """Ingest multiple signals in a single request (max 500)."""
+    """Ingest multiple signals in a single request (max 500).
+
+    Near-duplicate signals (Jaccard trigram similarity >= 0.85) are dropped
+    before insertion to avoid polluting the corpus with rephrased duplicates.
+    """
+    texts = [s.post_text for s in body.signals]
+    unique_texts, dropped_indices = deduplicate_batch(texts)
+    dropped_count = len(dropped_indices)
+    if dropped_count:
+        logger.info("Bulk ingest: dropped %d near-duplicate signals", dropped_count)
+
+    unique_signals = [s for i, s in enumerate(body.signals) if i not in dropped_indices]
     signal_ids = []
-    for s in body.signals:
+    for s in unique_signals:
         try:
+            strength = s.signal_strength or normalize_signal_strength(s.engagements)
             sid = await queries.insert_signal(
                 platform=s.platform,
                 brand=s.brand,
@@ -66,7 +79,7 @@ async def bulk_ingest_signals(body: BulkIngestRequest) -> BulkIngestResponse:
                 post_text=s.post_text,
                 campaign_type=s.campaign_type,
                 engagements=s.engagements,
-                signal_strength=s.signal_strength,
+                signal_strength=strength,
             )
             signal_ids.append(sid)
         except Exception as exc:
