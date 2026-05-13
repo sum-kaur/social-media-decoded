@@ -1,0 +1,57 @@
+[
+  {
+    "platform": "twitter",
+    "brand": "Nike",
+    "category": "sportswear",
+    "post_text": "Just dropped the new Air Max 2025 and people are losing their minds 🔥 #Nike #AirMax",
+    "campaign_type": "product_launch",
+    "engagements": 45230,
+    "signal_strength": 0.92,
+    "expected_sentiment": "positive",
+    "expected_topics": ["product_launch", "sneakers", "hype"]
+  },
+  {
+    "platform": "instagram",
+    "brand": "Nike",
+    "category": "sportswear",
+    "post_text": "Athletes worldwide choosing Nike for their marathon training. Real performance, real results.",
+    "campaign_type": "brand_awareness",
+    "engagements": 128400,
+    "signal_strength": 0.85,
+    "expected_sentiment": "positive",
+    "expected_topics": ["performance", "brand_awareness", "athletes"]
+  },
+  {
+    "platform": "twitter",
+    "brand": "Nike",
+    "category": "sportswear",
+    "post_text": "Nike's latest sustainability report is actually disappointing. They promised 50% recycled materials by 2025.",
+    "campaign_type": "organic",
+    "engagements": 3400,
+    "signal_strength": 0.45,
+    "expected_sentiment": "negative",
+    "expected_topics": ["sustainability", "criticism", "brand_accountability"]
+  },
+  {
+    "platform": "tiktok",
+    "brand": "Nike",
+    "category": "sportswear",
+    "post_text": "POV: you wore Nikes to the gym and now everyone wants to know your routine 😂 #NikeWorkout",
+    "campaign_type": "ugc",
+    "engagements": 892000,
+    "signal_strength": 0.97,
+    "expected_sentiment": "positive",
+    "expected_topics": ["ugc", "gym_culture", "viral"]
+  },
+  {
+    "platform": "instagram",
+    "brand": "Adidas",
+    "category": "sportswear",
+    "post_text": "Impossible is Nothing. Our new Ultraboost campaign just broke records on social.",
+    "campaign_type": "product_launch",
+    "engagements": 98200,
+    "signal_strength": 0.88,
+    "expected_sentiment": "positive",
+    "expected_topics": ["product_launch", "performance", "brand_positioning"]
+  }
+]
