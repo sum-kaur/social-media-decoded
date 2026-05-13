@@ -1,13 +1,14 @@
-"""GET /signals — paginated signal listing with filtering."""
+"""GET /signals — paginated signal listing, detail view, and similarity search."""
 from __future__ import annotations
 
 import logging
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel
 
+from db import queries
 from db.connection import acquire
 
 logger = logging.getLogger(__name__)
@@ -74,4 +75,54 @@ async def list_signals(
         signals=signals,
         total=total,
         has_more=(offset + limit) < total,
+    )
+
+
+@router.get("/{signal_id}", response_model=SignalRecord)
+async def get_signal(signal_id: uuid.UUID) -> SignalRecord:
+    """Fetch a single signal by ID."""
+    async with acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            SELECT id, platform, brand, category, post_text, campaign_type,
+                   engagements, signal_strength, ingested_at
+            FROM signals WHERE id = $1
+            """,
+            signal_id,
+        )
+    if not row:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Signal {signal_id} not found",
+        )
+    return SignalRecord(**dict(row))
+
+
+class SimilarSignalsResponse(BaseModel):
+    query_signal_id: uuid.UUID
+    similar: list[SignalRecord]
+
+
+@router.get("/{signal_id}/similar", response_model=SimilarSignalsResponse)
+async def find_similar_signals(
+    signal_id: uuid.UUID,
+    limit: int = Query(default=5, ge=1, le=20),
+) -> SimilarSignalsResponse:
+    """Return signals semantically similar to the given signal (requires embeddings)."""
+    similar_ids = await queries.find_similar_signals(signal_id=signal_id, limit=limit)
+    if not similar_ids:
+        return SimilarSignalsResponse(query_signal_id=signal_id, similar=[])
+
+    async with acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT id, platform, brand, category, post_text, campaign_type,
+                   engagements, signal_strength, ingested_at
+            FROM signals WHERE id = ANY($1::uuid[])
+            """,
+            similar_ids,
+        )
+    return SimilarSignalsResponse(
+        query_signal_id=signal_id,
+        similar=[SignalRecord(**dict(r)) for r in rows],
     )
