@@ -10,6 +10,7 @@ from typing import Any
 
 import anthropic
 
+from pipeline.metrics import get_registry
 from pipeline.retry import CircuitBreaker, with_exponential_backoff
 
 logger = logging.getLogger(__name__)
@@ -49,15 +50,25 @@ class BaseAgent:
         tools: list[dict],
         tool_choice: dict | None = None,
     ) -> anthropic.types.Message:
-        return await _anthropic_circuit_breaker.call(
-            self.client.messages.create,
-            model=self.MODEL,
-            max_tokens=self.MAX_TOKENS,
-            system=system,
-            messages=messages,
-            tools=tools,
-            tool_choice=tool_choice or {"type": "any"},
-        )
+        start = time.monotonic()
+        error = False
+        try:
+            result = await _anthropic_circuit_breaker.call(
+                self.client.messages.create,
+                model=self.MODEL,
+                max_tokens=self.MAX_TOKENS,
+                system=system,
+                messages=messages,
+                tools=tools,
+                tool_choice=tool_choice or {"type": "any"},
+            )
+            return result
+        except Exception:
+            error = True
+            raise
+        finally:
+            latency_ms = (time.monotonic() - start) * 1000
+            get_registry().record(self.name, latency_ms=latency_ms, error=error)
 
     async def run(self, state: dict) -> dict:
         """Override in subclasses."""
@@ -66,9 +77,9 @@ class BaseAgent:
     def _get_cached(self, input_hash: str) -> Any | None:
         value = _response_cache.get(input_hash)
         if value is not None and input_hash in _cache_access_order:
-            # Promote to most-recently-used
             _cache_access_order.remove(input_hash)
             _cache_access_order.append(input_hash)
+            get_registry().record(self.name, latency_ms=0.0, cache_hit=True)
         return value
 
     def _set_cached(self, input_hash: str, value: Any) -> None:
