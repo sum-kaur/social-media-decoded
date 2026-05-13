@@ -1,6 +1,7 @@
 # Social Media Decoded
 
 A production-grade multi-agent social signal intelligence platform. Given social marketing campaign data, a 4-agent LangGraph pipeline classifies signals, groups them by topic, generates marketing insights, and recommends actions — all backed by PostgreSQL + pgvector and served over a FastAPI async API.
+<img width="844" height="359" alt="image" src="https://github.com/user-attachments/assets/196adf53-4680-4482-a1f4-67498daedf9a" />
 
 ---
 
