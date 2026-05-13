@@ -1,0 +1,6 @@
+{
+  "minimum_actions": 2,
+  "required_priorities": ["high"],
+  "expected_platforms": ["twitter", "instagram", "tiktok"],
+  "max_timeframe_days": 30
+}
