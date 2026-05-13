@@ -8,6 +8,7 @@ from typing import AsyncGenerator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from api.middleware import RequestLoggingMiddleware
 from api.models import HealthResponse
 from api.routes import ingest, insights, pipeline
 from db.connection import close_pool, create_pool, get_pool
@@ -36,6 +37,7 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
+app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
