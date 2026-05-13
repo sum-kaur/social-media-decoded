@@ -238,3 +238,9 @@ async def get_pipeline_runs(brand: str | None = None, limit: int = 20) -> list[d
                 "SELECT * FROM pipeline_runs ORDER BY started_at DESC LIMIT $1", limit
             )
         return [dict(r) for r in rows]
+
+
+async def refresh_analytics_views() -> None:
+    """Trigger a concurrent refresh of all analytics materialized views."""
+    async with acquire() as conn:
+        await conn.execute("SELECT refresh_analytics_views()")
