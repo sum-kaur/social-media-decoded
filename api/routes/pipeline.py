@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 import uuid
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, status
 
 from api.models import PipelineRunRequest, PipelineRunResponse
 from db import queries
@@ -12,6 +12,18 @@ from pipeline.orchestrator import run_pipeline
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/pipeline", tags=["pipeline"])
+
+
+def _serialise_signals(raw_signals: list[dict]) -> list[dict]:
+    """Convert asyncpg Records to JSON-serialisable plain dicts."""
+    result = []
+    for s in raw_signals:
+        d = dict(s)
+        d["id"] = str(d["id"])
+        if d.get("ingested_at"):
+            d["ingested_at"] = d["ingested_at"].isoformat()
+        result.append(d)
+    return result
 
 
 @router.post(
@@ -40,15 +52,7 @@ async def run_pipeline_endpoint(body: PipelineRunRequest) -> PipelineRunResponse
                 detail=f"No signals found for brand '{body.brand}'",
             )
 
-        # Convert asyncpg Records to JSON-serialisable plain dicts
-        # asyncpg returns UUID and datetime objects that need explicit casting
-        signals_dicts = []
-        for s in raw_signals:
-            d = dict(s)
-            d["id"] = str(d["id"])
-            if d.get("ingested_at"):
-                d["ingested_at"] = d["ingested_at"].isoformat()
-            signals_dicts.append(d)
+        signals_dicts = _serialise_signals(raw_signals)
 
         final_state = await run_pipeline(
             brand=body.brand,
