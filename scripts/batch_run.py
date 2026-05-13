@@ -18,6 +18,7 @@ async def main(platform: str, concurrency: int) -> None:
     from db.connection import create_pool, close_pool
     from db.connection import acquire
     from pipeline.batch import BatchJob, run_batch
+    from pipeline.rate_limiter import get_limiter
 
     print("Connecting to database...")
     await create_pool()
@@ -33,8 +34,13 @@ async def main(platform: str, concurrency: int) -> None:
         return
 
     print(f"Found {len(brands)} brands: {', '.join(brands)}")
-    jobs = [BatchJob(brand=b, platform=platform) for b in brands]
 
+    limiter = get_limiter()
+    # Pre-warm buckets so first batch doesn't rate-limit itself
+    for brand in brands:
+        limiter.reset(brand)
+
+    jobs = [BatchJob(brand=b, platform=platform) for b in brands]
     results = await run_batch(jobs, concurrency=concurrency)
 
     print("\n=== Batch Results ===")
