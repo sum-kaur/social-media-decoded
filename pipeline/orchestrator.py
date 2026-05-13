@@ -13,6 +13,7 @@ from agents.signal_extractor import SignalExtractorAgent
 from agents.supervisor import route_next, supervisor_node
 from agents.topic_clusterer import TopicClustererAgent
 from db import queries
+from pipeline.middleware import set_run_id
 from pipeline.state import PipelineState
 
 logger = logging.getLogger(__name__)
@@ -115,9 +116,10 @@ async def run_pipeline(
     raw_signals: list[dict],
 ) -> PipelineState:
     graph = get_graph()
+    run_id = set_run_id()  # bind to context for log correlation
 
     initial_state: PipelineState = {
-        "run_id": str(uuid.uuid4()),
+        "run_id": run_id,
         "brand": brand,
         "platform": platform,
         "signal_ids": signal_ids,
