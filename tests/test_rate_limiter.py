@@ -52,14 +52,11 @@ class TestRateLimiter:
         elapsed = time.monotonic() - start
         assert elapsed < 0.5
 
-    def test_active_keys_tracks_used_buckets(self):
+    @pytest.mark.asyncio
+    async def test_active_keys_tracks_used_buckets(self):
         limiter = RateLimiter(rate=1.0, burst=5.0)
-
-        async def touch():
-            await limiter.acquire("BrandA")
-            await limiter.acquire("BrandB")
-
-        asyncio.get_event_loop().run_until_complete(touch())
+        await limiter.acquire("BrandA")
+        await limiter.acquire("BrandB")
         assert "BrandA" in limiter.active_keys
         assert "BrandB" in limiter.active_keys
 

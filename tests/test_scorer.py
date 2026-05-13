@@ -43,21 +43,30 @@ class TestScorer:
         assert result["grade"] == "F"
 
     def test_grade_boundaries(self):
+        # Test the letter grade function directly via known quality scores.
+        # Precision values >= threshold normalise to 1.0 (capped), so to get
+        # fractional scores we pass precision below the 0.70 pass threshold.
         cases = [
-            (95.0, "A"),
-            (85.0, "B"),
-            (75.0, "C"),
-            (65.0, "D"),
-            (50.0, "F"),
+            # precision=0.0 → normalised=0.0 → score=0.0 → F
+            (0.0, "F"),
+            # precision=0.42 → normalised=0.6 → score=60.0 → D
+            (0.42, "D"),
+            # precision=0.49 → normalised=0.7 → score=70.0 → C
+            (0.49, "C"),
+            # precision=0.56 → normalised=0.8 → score=80.0 → B
+            (0.56, "B"),
+            # precision=0.63 → normalised=0.9 → score=90.0 → A
+            (0.63, "A"),
         ]
-        for score, expected_grade in cases:
-            # Build a report that hits exactly this score via sentiment_accuracy only
-            prec = score / 100.0
+        for precision, expected_grade in cases:
             report = _make_eval_report([
-                {"metric": "sentiment_accuracy", "precision": prec},
+                {"metric": "sentiment_accuracy", "precision": precision},
             ])
             result = score_pipeline_output(report)
-            assert result["grade"] == expected_grade, f"score={score} expected {expected_grade}, got {result['grade']}"
+            assert result["grade"] == expected_grade, (
+                f"precision={precision} score={result['quality_score']} "
+                f"expected {expected_grade}, got {result['grade']}"
+            )
 
     def test_empty_report_returns_zero(self):
         result = score_pipeline_output({"details": []})
